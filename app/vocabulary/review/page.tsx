@@ -214,28 +214,40 @@ export default function VocabularyReviewPage() {
                     className="bg-white rounded-3xl shadow-2xl p-12 mb-8 cursor-pointer min-h-80 flex flex-col justify-center items-center transform transition-transform duration-300 hover:scale-105"
                 >
                     {!isFlipped ? (
-                        // Face 1: Mot + Phrase d'exemple
+                        // Face 1: Mot CHINOIS + Phrase d'exemple (SANS pinyin)
                         <div className="text-center">
                             <p className="text-gray-500 text-sm mb-6">📖 Le Mot</p>
                             <h2 className="text-6xl font-bold text-blue-600 mb-8">{currentCard.word}</h2>
-                            {currentCard.pinyin && (
-                                <p className="text-2xl text-purple-600 font-semibold mb-8">
-                                    {currentCard.pinyin}
-                                </p>
-                            )}
                             <p className="text-lg text-gray-700 italic mb-8">
                                 "{currentCard.example_phrase}"
                             </p>
-                            <p className="text-gray-400 text-xs">Clique pour voir la traduction</p>
+                            <p className="text-gray-400 text-xs">Clique pour voir la traduction et le pinyin</p>
                         </div>
                     ) : (
-                        // Face 2: Définition
-                        <div className="text-center">
-                            <p className="text-gray-500 text-sm mb-6">📚 Définition</p>
-                            <p className="text-xl text-gray-800 leading-relaxed">
-                                {currentCard.definition}
-                            </p>
-                            <p className="text-gray-400 text-xs mt-8">Clique pour voir le mot</p>
+                        // Face 2: Définition + Pinyin du mot + Phrase exemple + Pinyin phrase
+                        <div className="text-center space-y-6">
+                            <div>
+                                <p className="text-gray-500 text-sm mb-2">📚 Définition</p>
+                                <p className="text-xl text-gray-800 leading-relaxed">
+                                    {currentCard.definition}
+                                </p>
+                            </div>
+
+                            <div className="border-t pt-6">
+                                <p className="text-gray-500 text-sm mb-2">🔤 Pinyin du mot</p>
+                                <p className="text-2xl text-purple-600 font-semibold">
+                                    {currentCard.pinyin || '(pinyin non généré)'}
+                                </p>
+                            </div>
+
+                            <div className="border-t pt-6">
+                                <p className="text-gray-500 text-sm mb-2">📝 Phrase d'exemple</p>
+                                <p className="text-lg text-gray-700 italic">
+                                    "{currentCard.example_phrase}"
+                                </p>
+                            </div>
+
+                            <p className="text-gray-400 text-xs pt-6">Clique pour voir le mot</p>
                         </div>
                     )}
                 </div>
