@@ -19,8 +19,8 @@ export default function VocabularyReviewPage() {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [isFlipped, setIsFlipped] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [isGeneratingPinyin, setIsGeneratingPinyin] = useState(false);
     const [message, setMessage] = useState('');
+    const [isGeneratingPinyin, setIsGeneratingPinyin] = useState(false);
 
     useEffect(() => {
         loadNonMasteredCards();
@@ -47,41 +47,6 @@ export default function VocabularyReviewPage() {
             setMessage('❌ Erreur au chargement');
         } finally {
             setIsLoading(false);
-        }
-    };
-
-    const handleGeneratePinyin = async () => {
-        setIsGeneratingPinyin(true);
-        setMessage('⏳ Génération du pinyin...');
-
-        try {
-            const response = await fetch('/api/generate-pinyin', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                setMessage(`❌ ${data.error || 'Erreur'}`);
-                return;
-            }
-
-            setMessage(
-                `✅ Pinyin généré pour ${data.updatedCount} mots!`
-            );
-
-            // Recharge les cartes
-            await loadNonMasteredCards();
-
-            setTimeout(() => setMessage(''), 3000);
-        } catch (error: any) {
-            console.error('Error:', error);
-            setMessage(`❌ ${error.message || 'Erreur'}`);
-        } finally {
-            setIsGeneratingPinyin(false);
         }
     };
 
@@ -138,6 +103,33 @@ export default function VocabularyReviewPage() {
         }
     };
 
+    const handleGeneratePinyin = async () => {
+        try {
+            setIsGeneratingPinyin(true);
+            setMessage('⏳ Génération du pinyin en cours...');
+
+            const response = await fetch('/api/generate-pinyin', {
+                method: 'POST',
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Erreur génération pinyin');
+            }
+
+            // Recharger les cartes pour voir le pinyin mis à jour
+            await loadNonMasteredCards();
+            setMessage('✅ Pinyin généré pour tous les mots!');
+            setTimeout(() => setMessage(''), 3000);
+        } catch (error: any) {
+            console.error('Error:', error);
+            setMessage(`❌ ${error.message}`);
+        } finally {
+            setIsGeneratingPinyin(false);
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
@@ -171,7 +163,7 @@ export default function VocabularyReviewPage() {
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 pb-28">
             <div className="max-w-2xl mx-auto">
-                {/* Header with Pinyin Button */}
+                {/* Header */}
                 <div className="mb-8 flex justify-between items-start">
                     <div>
                         <Link
@@ -188,8 +180,7 @@ export default function VocabularyReviewPage() {
                     <button
                         onClick={handleGeneratePinyin}
                         disabled={isGeneratingPinyin}
-                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:opacity-50 whitespace-nowrap"
-                        title="Générer le pinyin pour tous les mots chinois"
+                        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg transition disabled:opacity-50 text-sm whitespace-nowrap"
                     >
                         {isGeneratingPinyin ? '⏳ Génération...' : '🔤 Générer Pinyin'}
                     </button>
@@ -226,9 +217,9 @@ export default function VocabularyReviewPage() {
                         // Face 1: Mot + Phrase d'exemple
                         <div className="text-center">
                             <p className="text-gray-500 text-sm mb-6">📖 Le Mot</p>
-                            <h2 className="text-6xl font-bold text-blue-600 mb-4">{currentCard.word}</h2>
+                            <h2 className="text-6xl font-bold text-blue-600 mb-8">{currentCard.word}</h2>
                             {currentCard.pinyin && (
-                                <p className="text-xl text-purple-600 font-semibold mb-4">
+                                <p className="text-2xl text-purple-600 font-semibold mb-8">
                                     {currentCard.pinyin}
                                 </p>
                             )}
