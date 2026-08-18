@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface VocabCard {
@@ -15,10 +16,12 @@ interface VocabCard {
 }
 
 export default function VocabularyPage() {
+    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [vocabCards, setVocabCards] = useState<VocabCard[]>([]);
     const [isLoadingCards, setIsLoadingCards] = useState(true);
+    const [userId, setUserId] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -27,26 +30,38 @@ export default function VocabularyPage() {
         example_phrase: '',
     });
 
-    // Fetch cards
+    // Check auth + Fetch cards
     useEffect(() => {
-        loadCards();
+        checkAuth();
     }, []);
 
-    const loadCards = async () => {
+    const checkAuth = async () => {
         try {
-            setIsLoadingCards(true);
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) {
-                setMessage('❌ Non connecté');
+            const { data: { user }, error } = await supabase.auth.getUser();
+
+            if (error || !user) {
+                console.error('Auth error:', error);
+                setMessage('❌ Non connecté - Redirection...');
+                setTimeout(() => router.push('/login'), 2000);
                 return;
             }
+
+            setUserId(user.id);
+            await loadCards(user.id);
+        } catch (error) {
+            console.error('Auth check error:', error);
+            setMessage('❌ Erreur d\'authentification');
+        }
+    };
+
+    const loadCards = async (uid: string) => {
+        try {
+            setIsLoadingCards(true);
 
             const { data, error } = await supabase
                 .from('my_vocab')
                 .select('*')
-                .eq('user_id', user.id)
+                .eq('user_id', uid)
                 .order('created_at', { ascending: false });
 
             if (error) {
@@ -82,22 +97,19 @@ export default function VocabularyPage() {
             return;
         }
 
+        if (!userId) {
+            setMessage('❌ Non connecté');
+            return;
+        }
+
         try {
             setIsLoading(true);
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-
-            if (!user) {
-                setMessage('❌ Non connecté');
-                return;
-            }
 
             const { data, error } = await supabase
                 .from('my_vocab')
                 .insert([
                     {
-                        user_id: user.id,
+                        user_id: userId,
                         word: formData.word.trim(),
                         definition: formData.definition.trim(),
                         example_phrase: formData.example_phrase.trim(),
@@ -114,7 +126,7 @@ export default function VocabularyPage() {
 
             setMessage('✅ Mot ajouté avec succès!');
             setFormData({ word: '', definition: '', example_phrase: '' });
-            await loadCards();
+            await loadCards(userId);
 
             setTimeout(() => setMessage(''), 3000);
         } catch (error: any) {
@@ -137,7 +149,7 @@ export default function VocabularyPage() {
             if (error) throw error;
 
             setMessage('✅ Mot supprimé');
-            await loadCards();
+            if (userId) await loadCards(userId);
             setTimeout(() => setMessage(''), 2000);
         } catch (error: any) {
             console.error('Delete error:', error);
@@ -146,6 +158,22 @@ export default function VocabularyPage() {
     };
 
     const nonMasteredCount = vocabCards.filter((card) => !card.is_mastered).length;
+
+    if (!userId) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+                <div className="text-center">
+                    <p className="text-xl font-semibold text-gray-800 mb-4">🔐 {message}</p>
+                    <button
+                        onClick={() => router.push('/login')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
+                    >
+                        Se connecter
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
