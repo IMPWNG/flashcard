@@ -12,6 +12,7 @@ interface VocabCard {
     is_mastered: boolean;
     review_count: number;
     pinyin?: string;
+    example_phrase_pinyin?: string;
 }
 
 export default function VocabularyReviewPage() {
@@ -211,7 +212,7 @@ export default function VocabularyReviewPage() {
                 {/* Flashcard */}
                 <div
                     onClick={() => setIsFlipped(!isFlipped)}
-                    className="bg-white rounded-3xl shadow-2xl p-12 mb-8 cursor-pointer min-h-80 flex flex-col justify-center items-center transform transition-transform duration-300 hover:scale-105"
+                    className="bg-white rounded-3xl shadow-2xl p-12 mb-8 cursor-pointer min-h-96 flex flex-col justify-center items-center transform transition-transform duration-300 hover:scale-105"
                 >
                     {!isFlipped ? (
                         // Face 1: Mot CHINOIS + Phrase d'exemple (SANS pinyin)
@@ -244,6 +245,9 @@ export default function VocabularyReviewPage() {
                                 <p className="text-gray-500 text-sm mb-2">📝 Phrase d'exemple</p>
                                 <p className="text-lg text-gray-700 italic">
                                     "{currentCard.example_phrase}"
+                                </p>
+                                <p className="text-sm text-purple-600 font-semibold mt-2">
+                                    {currentCard.example_phrase_pinyin || '(pinyin non généré)'}
                                 </p>
                             </div>
 
