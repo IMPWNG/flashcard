@@ -35,25 +35,15 @@ export default function VocabularyPage() {
     const loadCards = async () => {
         try {
             setIsLoadingCards(true);
-            const { data: userData } = await supabase.auth.getUser();
-            const userId = userData.user?.id;
-
-            if (!userId) {
-                setMessage('❌ Pas d\'utilisateur');
-                setIsLoadingCards(false);
-                return;
-            }
 
             const { data, error } = await supabase
                 .from('my_vocab')
                 .select('*')
-                .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Supabase error:', error);
                 setMessage(`❌ Erreur: ${error.message}`);
-                setIsLoadingCards(false);
                 return;
             }
 
@@ -87,19 +77,11 @@ export default function VocabularyPage() {
 
         try {
             setIsLoading(true);
-            const { data: userData } = await supabase.auth.getUser();
-            const userId = userData.user?.id;
-
-            if (!userId) {
-                setMessage('❌ Pas d\'utilisateur');
-                return;
-            }
 
             const { error } = await supabase
                 .from('my_vocab')
                 .insert([
                     {
-                        user_id: userId,
                         word: formData.word.trim(),
                         definition: formData.definition.trim(),
                         example_phrase: formData.example_phrase.trim(),
