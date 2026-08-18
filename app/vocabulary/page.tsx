@@ -226,7 +226,7 @@ export default function VocabularyPage() {
                 {/* Vocab List */}
                 <div className="bg-white rounded-3xl p-8 shadow-lg border border-gray-100">
                     <div className="flex justify-between items-center mb-6">
-                        <h2 className="text-2xl font-bold text-gray-800">Mes mots ({vocabCards.length})</h2>
+                        <h2 className="text-2xl font-bold text-gray-800">Mes mots</h2>
                         {nonMasteredCount > 0 && (
                             <Link
                                 href="/vocabulary/review"
