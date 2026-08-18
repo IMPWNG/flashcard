@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase'
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 interface VocabCard {
@@ -16,12 +15,10 @@ interface VocabCard {
 }
 
 export default function VocabularyPage() {
-    const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
     const [message, setMessage] = useState('');
     const [vocabCards, setVocabCards] = useState<VocabCard[]>([]);
     const [isLoadingCards, setIsLoadingCards] = useState(true);
-    const [userId, setUserId] = useState<string | null>(null);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -30,47 +27,38 @@ export default function VocabularyPage() {
         example_phrase: '',
     });
 
-    // Check auth + Fetch cards
+    // Fetch cards
     useEffect(() => {
-        checkAuth();
+        loadCards();
     }, []);
 
-    const checkAuth = async () => {
-        try {
-            const { data: { user }, error } = await supabase.auth.getUser();
-
-            if (error || !user) {
-                console.error('Auth error:', error);
-                setMessage('❌ Non connecté - Redirection...');
-                setTimeout(() => router.push('/login'), 2000);
-                return;
-            }
-
-            setUserId(user.id);
-            await loadCards(user.id);
-        } catch (error) {
-            console.error('Auth check error:', error);
-            setMessage('❌ Erreur d\'authentification');
-        }
-    };
-
-    const loadCards = async (uid: string) => {
+    const loadCards = async () => {
         try {
             setIsLoadingCards(true);
+            const { data: userData } = await supabase.auth.getUser();
+            const userId = userData.user?.id;
+
+            if (!userId) {
+                setMessage('❌ Pas d\'utilisateur');
+                setIsLoadingCards(false);
+                return;
+            }
 
             const { data, error } = await supabase
                 .from('my_vocab')
                 .select('*')
-                .eq('user_id', uid)
+                .eq('user_id', userId)
                 .order('created_at', { ascending: false });
 
             if (error) {
                 console.error('Supabase error:', error);
                 setMessage(`❌ Erreur: ${error.message}`);
+                setIsLoadingCards(false);
                 return;
             }
 
             setVocabCards(data || []);
+            setMessage('');
         } catch (error) {
             console.error('Error loading cards:', error);
             setMessage('❌ Erreur au chargement');
@@ -97,15 +85,17 @@ export default function VocabularyPage() {
             return;
         }
 
-        if (!userId) {
-            setMessage('❌ Non connecté');
-            return;
-        }
-
         try {
             setIsLoading(true);
+            const { data: userData } = await supabase.auth.getUser();
+            const userId = userData.user?.id;
 
-            const { data, error } = await supabase
+            if (!userId) {
+                setMessage('❌ Pas d\'utilisateur');
+                return;
+            }
+
+            const { error } = await supabase
                 .from('my_vocab')
                 .insert([
                     {
@@ -116,22 +106,22 @@ export default function VocabularyPage() {
                         is_mastered: false,
                         review_count: 0,
                     },
-                ])
-                .select();
+                ]);
 
             if (error) {
                 console.error('Insert error:', error);
-                throw error;
+                setMessage(`❌ ${error.message}`);
+                return;
             }
 
             setMessage('✅ Mot ajouté avec succès!');
             setFormData({ word: '', definition: '', example_phrase: '' });
-            await loadCards(userId);
+            await loadCards();
 
             setTimeout(() => setMessage(''), 3000);
         } catch (error: any) {
             console.error('Error:', error);
-            setMessage(`❌ ${error.message || 'Erreur lors de l\'ajout'}`);
+            setMessage(`❌ ${error.message || 'Erreur'}`);
         } finally {
             setIsLoading(false);
         }
@@ -141,42 +131,29 @@ export default function VocabularyPage() {
         if (!confirm('Sûr de vouloir supprimer ce mot?')) return;
 
         try {
-            const { error } = await supabase
-                .from('my_vocab')
-                .delete()
-                .eq('id', id);
-
+            const { error } = await supabase.from('my_vocab').delete().eq('id', id);
             if (error) throw error;
 
             setMessage('✅ Mot supprimé');
-            if (userId) await loadCards(userId);
+            await loadCards();
             setTimeout(() => setMessage(''), 2000);
         } catch (error: any) {
-            console.error('Delete error:', error);
             setMessage(`❌ ${error.message}`);
         }
     };
 
     const nonMasteredCount = vocabCards.filter((card) => !card.is_mastered).length;
 
-    if (!userId) {
+    if (isLoadingCards) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-                <div className="text-center">
-                    <p className="text-xl font-semibold text-gray-800 mb-4">🔐 {message}</p>
-                    <button
-                        onClick={() => router.push('/login')}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-6 rounded-lg"
-                    >
-                        Se connecter
-                    </button>
-                </div>
+                <div className="text-5xl animate-pulse">📚</div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 pb-28">
             <div className="max-w-4xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
@@ -278,9 +255,7 @@ export default function VocabularyPage() {
                         )}
                     </div>
 
-                    {isLoadingCards ? (
-                        <p className="text-gray-600 text-center py-8">Chargement...</p>
-                    ) : vocabCards.length === 0 ? (
+                    {vocabCards.length === 0 ? (
                         <p className="text-gray-600 text-center py-8">Aucun mot pour le moment. Ajoute-en un!</p>
                     ) : (
                         <div className="space-y-3 max-h-96 overflow-y-auto">
