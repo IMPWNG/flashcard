@@ -251,7 +251,6 @@ export default function VocabularyPage() {
                                 >
                                     <div className="flex-1">
                                         <p className="font-bold text-gray-800">{card.word}</p>
-                                        <p className="text-sm text-gray-600 mt-1">{card.definition}</p>
                                         <p className="text-xs text-gray-500 italic mt-2">
                                             "{card.example_phrase}"
                                         </p>

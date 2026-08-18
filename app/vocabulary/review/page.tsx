@@ -38,7 +38,7 @@ export default function VocabularyReviewPage() {
                 throw error;
             }
 
-            console.log('Cards loaded:', data); // DEBUG
+            console.log('Cards loaded:', data);
             setCards(data || []);
         } catch (error) {
             console.error('Error:', error);
@@ -132,7 +132,7 @@ export default function VocabularyReviewPage() {
     const progress = ((currentIndex + 1) / cards.length) * 100;
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 pb-28">
             <div className="max-w-2xl mx-auto">
                 {/* Header */}
                 <div className="mb-8">
@@ -160,8 +160,8 @@ export default function VocabularyReviewPage() {
                 {message && (
                     <div
                         className={`text-center font-semibold mb-6 p-3 rounded-lg ${message.includes('✅') || message.includes('🎉')
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-red-100 text-red-700'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
                             }`}
                     >
                         {message}
@@ -174,17 +174,21 @@ export default function VocabularyReviewPage() {
                     className="bg-white rounded-3xl shadow-2xl p-12 mb-8 cursor-pointer min-h-80 flex flex-col justify-center items-center transform transition-transform duration-300 hover:scale-105"
                 >
                     {!isFlipped ? (
+                        // Face 1: Mot + Phrase d'exemple
                         <div className="text-center">
-                            <p className="text-gray-500 text-sm mb-4">📖 Le Mot</p>
-                            <h2 className="text-5xl font-bold text-blue-600 mb-4">{currentCard.word}</h2>
-                            <p className="text-gray-600 text-lg">{currentCard.definition}</p>
-                            <p className="text-gray-400 text-xs mt-8">Clique pour voir la phrase d'exemple</p>
+                            <p className="text-gray-500 text-sm mb-6">📖 Le Mot</p>
+                            <h2 className="text-6xl font-bold text-blue-600 mb-8">{currentCard.word}</h2>
+                            <p className="text-lg text-gray-700 italic mb-8">
+                                "{currentCard.example_phrase}"
+                            </p>
+                            <p className="text-gray-400 text-xs">Clique pour voir la traduction</p>
                         </div>
                     ) : (
+                        // Face 2: Définition
                         <div className="text-center">
-                            <p className="text-gray-500 text-sm mb-4">📝 Phrase d'exemple</p>
-                            <p className="text-xl text-gray-800 italic leading-relaxed">
-                                "{currentCard.example_phrase}"
+                            <p className="text-gray-500 text-sm mb-6">📚 Définition</p>
+                            <p className="text-xl text-gray-800 leading-relaxed">
+                                {currentCard.definition}
                             </p>
                             <p className="text-gray-400 text-xs mt-8">Clique pour voir le mot</p>
                         </div>
@@ -195,13 +199,13 @@ export default function VocabularyReviewPage() {
                 <div className="grid grid-cols-2 gap-4">
                     <button
                         onClick={handleNotMastered}
-                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl transition text-lg"
+                        className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-4 px-6 rounded-xl transition text-lg active:scale-95"
                     >
                         ❌ Pas encore
                     </button>
                     <button
                         onClick={handleMastered}
-                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition text-lg"
+                        className="bg-green-500 hover:bg-green-600 text-white font-bold py-4 px-6 rounded-xl transition text-lg active:scale-95"
                     >
                         ✅ C'est bon!
                     </button>
@@ -210,7 +214,7 @@ export default function VocabularyReviewPage() {
                 {/* Stats */}
                 <div className="mt-8 bg-white rounded-2xl p-4 shadow-sm border border-gray-200 text-center">
                     <p className="text-gray-600 text-sm">
-                        Fois révisé: <span className="font-bold">{currentCard.review_count}</span>
+                        Fois révisé: <span className="font-bold text-blue-600">{currentCard.review_count}</span>
                     </p>
                 </div>
             </div>
