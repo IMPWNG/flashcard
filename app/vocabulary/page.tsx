@@ -38,7 +38,10 @@ export default function VocabularyPage() {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (!user) return;
+            if (!user) {
+                setMessage('❌ Non connecté');
+                return;
+            }
 
             const { data, error } = await supabase
                 .from('my_vocab')
@@ -46,7 +49,12 @@ export default function VocabularyPage() {
                 .eq('user_id', user.id)
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error:', error);
+                setMessage(`❌ Erreur: ${error.message}`);
+                return;
+            }
+
             setVocabCards(data || []);
         } catch (error) {
             console.error('Error loading cards:', error);
@@ -79,18 +87,30 @@ export default function VocabularyPage() {
             const {
                 data: { user },
             } = await supabase.auth.getUser();
-            if (!user) return;
 
-            const { error } = await supabase.from('my_vocab').insert([
-                {
-                    user_id: user.id,
-                    word: formData.word.trim(),
-                    definition: formData.definition.trim(),
-                    example_phrase: formData.example_phrase.trim(),
-                },
-            ]);
+            if (!user) {
+                setMessage('❌ Non connecté');
+                return;
+            }
 
-            if (error) throw error;
+            const { data, error } = await supabase
+                .from('my_vocab')
+                .insert([
+                    {
+                        user_id: user.id,
+                        word: formData.word.trim(),
+                        definition: formData.definition.trim(),
+                        example_phrase: formData.example_phrase.trim(),
+                        is_mastered: false,
+                        review_count: 0,
+                    },
+                ])
+                .select();
+
+            if (error) {
+                console.error('Insert error:', error);
+                throw error;
+            }
 
             setMessage('✅ Mot ajouté avec succès!');
             setFormData({ word: '', definition: '', example_phrase: '' });
@@ -99,7 +119,7 @@ export default function VocabularyPage() {
             setTimeout(() => setMessage(''), 3000);
         } catch (error: any) {
             console.error('Error:', error);
-            setMessage(`❌ ${error.message || 'Erreur'}`);
+            setMessage(`❌ ${error.message || 'Erreur lors de l\'ajout'}`);
         } finally {
             setIsLoading(false);
         }
@@ -109,13 +129,18 @@ export default function VocabularyPage() {
         if (!confirm('Sûr de vouloir supprimer ce mot?')) return;
 
         try {
-            const { error } = await supabase.from('my_vocab').delete().eq('id', id);
+            const { error } = await supabase
+                .from('my_vocab')
+                .delete()
+                .eq('id', id);
+
             if (error) throw error;
 
             setMessage('✅ Mot supprimé');
             await loadCards();
             setTimeout(() => setMessage(''), 2000);
         } catch (error: any) {
+            console.error('Delete error:', error);
             setMessage(`❌ ${error.message}`);
         }
     };
@@ -156,8 +181,8 @@ export default function VocabularyPage() {
                     {message && (
                         <p
                             className={`text-sm font-semibold mb-4 p-3 rounded-lg ${message.includes('✅')
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-red-100 text-red-700'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-red-100 text-red-700'
                                 }`}
                         >
                             {message}
@@ -235,8 +260,8 @@ export default function VocabularyPage() {
                                 <div
                                     key={card.id}
                                     className={`p-4 border rounded-lg flex justify-between items-start ${card.is_mastered
-                                            ? 'bg-green-50 border-green-200'
-                                            : 'bg-gray-50 border-gray-200'
+                                        ? 'bg-green-50 border-green-200'
+                                        : 'bg-gray-50 border-gray-200'
                                         }`}
                                 >
                                     <div className="flex-1">

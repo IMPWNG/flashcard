@@ -370,12 +370,14 @@ export default function HomePage() {
       </div>
 
       {/* Action Buttons */}
+      {/* Action Buttons */}
       <div className="space-y-3 mb-4">
+        {/* Review Cards - Teal/Emerald */}
         <button
           onClick={() => router.push('/study')}
           disabled={stats.dueCount === 0}
           className={`w-full py-4 rounded-2xl font-bold text-lg shadow-lg active:scale-95 transition-all flex items-center justify-between px-6
-            ${stats.dueCount > 0
+      ${stats.dueCount > 0
               ? 'bg-gradient-to-r from-teal-500 to-emerald-500 text-white shadow-teal-200'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'}`}
         >
@@ -391,12 +393,13 @@ export default function HomePage() {
           {stats.dueCount > 0 && <span className="text-xl opacity-75">→</span>}
         </button>
 
+        {/* My Vocabulary - Indigo/Blue */}
         <button
           onClick={() => router.push('/vocabulary')}
-          className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+          className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-indigo-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-indigo-500 to-blue-600 text-white"
         >
           <div className="flex items-center gap-3">
-            <span className="text-2xl">📚</span>
+            <span className="text-2xl">📓</span>
             <div className="text-left">
               <p className="font-bold leading-tight">My Vocabulary</p>
               <p className="text-xs opacity-75 font-normal">
@@ -407,6 +410,7 @@ export default function HomePage() {
           <span className="text-xl opacity-75">→</span>
         </button>
 
+        {/* New Lesson - Purple/Pink */}
         <button
           onClick={() => router.push('/lesson')}
           className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
@@ -423,6 +427,7 @@ export default function HomePage() {
           <span className="text-xl opacity-75">→</span>
         </button>
 
+        {/* Practice Exercises - Blue/Cyan */}
         <button
           onClick={() => router.push('/exercises')}
           className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-blue-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-blue-500 to-cyan-500 text-white"
@@ -439,6 +444,7 @@ export default function HomePage() {
           <span className="text-xl opacity-75">→</span>
         </button>
 
+        {/* Daily Idioms - Orange/Amber */}
         <button
           onClick={() => router.push('/idioms')}
           className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-orange-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-orange-400 to-amber-500 text-white"
@@ -455,9 +461,10 @@ export default function HomePage() {
           <span className="text-xl opacity-75">→</span>
         </button>
 
+        {/* Weekly Poems - Rose/Magenta */}
         <button
           onClick={() => router.push('/poems')}
-          className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-purple-500 to-indigo-600 text-white"
+          className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-rose-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-rose-500 to-magenta-500 text-white"
         >
           <div className="flex items-center gap-3">
             <span className="text-2xl">🎭</span>
