@@ -14,10 +14,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // 1️⃣ RÉCUPÈRE TOUS LES MOTS DE LA BDD
+    // 1️⃣ RÉCUPÈRE TOUS LES MOTS SANS PINYIN
     const { data: allCards, error: fetchError } = await supabase
       .from("my_vocab")
-      .select("id, word");
+      .select("id, word, example_phrase")
+      .or("pinyin.is.null,example_phrase_pinyin.is.null");
 
     if (fetchError) {
       console.error("❌ Fetch error:", fetchError);
@@ -31,13 +32,15 @@ export async function POST(req: NextRequest) {
 
     if (!allCards || allCards.length === 0) {
       return NextResponse.json(
-        { error: "No vocabulary cards found" },
-        { status: 400 },
+        { message: "All pinyins already generated", count: 0 },
+        { status: 200 },
       );
     }
 
-    // 2️⃣ APPELLE L'IA POUR GÉNÉRER LE PINYIN
-    const wordsToProcess = allCards.map((card) => card.word).join("\n");
+    // 2️⃣ CRÉE LE PROMPT AVEC LES MOTS ET LES PHRASES
+    const itemsToProcess = allCards
+      .map((card) => `WORD: ${card.word}\nPHRASE: ${card.example_phrase}`)
+      .join("\n---\n");
 
     const aiResponse = await fetch(
       "https://api.mammouth.ai/v1/chat/completions",
@@ -52,27 +55,26 @@ export async function POST(req: NextRequest) {
           messages: [
             {
               role: "system",
-              content: `You are an expert in Chinese language. You must provide accurate pinyin with tone marks for Chinese words and phrases. If a word is not in Chinese characters, return it as-is.`,
+              content: `You are an expert in Chinese language. You must provide accurate pinyin with tone marks for Chinese words and phrases. If text is not in Chinese characters, return it as-is.`,
             },
             {
               role: "user",
-              content: `For each word/phrase below, provide the pinyin with tone marks. Respond with ONLY a JSON object, no markdown or extra text.
+              content: `For each word and phrase below, provide the pinyin with tone marks. Respond with ONLY a JSON object, no markdown or extra text.
 
-Words to convert:
-${wordsToProcess}
+Items to convert:
+${itemsToProcess}
 
-Respond in this format (example):
+Respond in this exact format:
 {
   "pinyin_data": [
-    {"word": "你好", "pinyin": "nǐ hǎo"},
-    {"word": "谢谢", "pinyin": "xièxie"},
-    {"word": "hello", "pinyin": "hello"}
+    {"word": "你好", "pinyin": "nǐ hǎo", "phrase": "你好世界", "phrase_pinyin": "nǐ hǎo shì jiè"},
+    {"word": "谢谢", "pinyin": "xièxie", "phrase": "我想说谢谢", "phrase_pinyin": "wǒ xiǎng shuō xièxie"}
   ]
 }`,
             },
           ],
           temperature: 0.3,
-          max_tokens: 2000,
+          max_tokens: 4000,
         }),
       },
     );
@@ -118,24 +120,30 @@ Respond in this format (example):
         if (card) {
           const { error: updateError } = await supabase
             .from("my_vocab")
-            .update({ pinyin: item.pinyin || item.word })
+            .update({
+              pinyin: item.pinyin || item.word,
+              example_phrase_pinyin: item.phrase_pinyin || item.phrase,
+            })
             .eq("id", card.id);
 
           if (updateError) {
             errors.push(`${item.word}: ${updateError.message}`);
           } else {
             updateCount++;
+            console.log(
+              `✅ Updated: ${item.word} -> ${item.pinyin} | ${item.phrase} -> ${item.phrase_pinyin}`,
+            );
           }
         }
       }
     }
 
-    console.log(`✅ Updated ${updateCount} words`);
+    console.log(`✅ Updated ${updateCount} words with pinyin`);
 
     return NextResponse.json(
       {
         success: true,
-        message: `Pinyin generated for ${updateCount} words`,
+        message: `Pinyin generated for ${updateCount} words and phrases`,
         updatedCount: updateCount,
         errors: errors,
       },
