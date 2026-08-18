@@ -26,20 +26,19 @@ export default function VocabularyReviewPage() {
 
     const loadNonMasteredCards = async () => {
         try {
-            const {
-                data: { user },
-            } = await supabase.auth.getUser();
-            if (!user) return;
-
             const { data, error } = await supabase
                 .from('my_vocab')
                 .select('*')
-                .eq('user_id', user.id)
                 .eq('is_mastered', false)
                 .order('review_count', { ascending: true })
                 .order('created_at', { ascending: true });
 
-            if (error) throw error;
+            if (error) {
+                console.error('Supabase error:', error);
+                throw error;
+            }
+
+            console.log('Cards loaded:', data); // DEBUG
             setCards(data || []);
         } catch (error) {
             console.error('Error:', error);
@@ -57,9 +56,7 @@ export default function VocabularyReviewPage() {
                 .from('my_vocab')
                 .update({
                     is_mastered: true,
-                    mastered_at: new Date().toISOString(),
                     review_count: card.review_count + 1,
-                    last_reviewed_at: new Date().toISOString(),
                 })
                 .eq('id', card.id);
 
@@ -80,7 +77,6 @@ export default function VocabularyReviewPage() {
                 .from('my_vocab')
                 .update({
                     review_count: card.review_count + 1,
-                    last_reviewed_at: new Date().toISOString(),
                 })
                 .eq('id', card.id);
 
@@ -109,6 +105,7 @@ export default function VocabularyReviewPage() {
         return (
             <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-6">
                 <div className="text-center">
+                    <div className="text-5xl animate-pulse mb-4">📚</div>
                     <p className="text-gray-600">Chargement...</p>
                 </div>
             </div>
@@ -163,8 +160,8 @@ export default function VocabularyReviewPage() {
                 {message && (
                     <div
                         className={`text-center font-semibold mb-6 p-3 rounded-lg ${message.includes('✅') || message.includes('🎉')
-                                ? 'bg-green-100 text-green-700'
-                                : 'bg-red-100 text-red-700'
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-red-100 text-red-700'
                             }`}
                     >
                         {message}
