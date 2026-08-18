@@ -15,42 +15,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // ✅ MEILLEURE LOGIQUE : Semaine ISO (conforme à ISO 8601)
-    const now = new Date();
-    const start = new Date(now.getFullYear(), 0, 1);
-    const diff = now.getTime() - start.getTime();
-    const oneWeek = 1000 * 60 * 60 * 24 * 7;
-    const currentWeek = Math.floor(diff / oneWeek) + 1;
-    const currentYear = now.getFullYear();
-
-    console.log(`📅 Current week: ${currentWeek}, Year: ${currentYear}`);
-
-    // ✅ VÉRIFIER SI UN POÈME EXISTE DÉJÀ CETTE SEMAINE (avec l'année)
-    const { data: existingPoem, error: queryError } = await supabase
-      .from("poems")
-      .select("*")
-      .eq("week_number", currentWeek)
-      .eq("year", currentYear) // ✅ AJOUTER LA VÉRIFICATION ANNÉE
-      .limit(1)
-      .single();
-
-    if (queryError && queryError.code !== "PGRST116") {
-      // PGRST116 = "no rows found" c'est normal
-      console.error("❌ Query error:", queryError);
-      return NextResponse.json(
-        { error: "Database error", details: queryError.message },
-        { status: 500 },
-      );
-    }
-
-    // ✅ SI LE POÈME EXISTE, LE RETOURNER DIRECTEMENT
-    if (existingPoem) {
-      console.log("✅ Poem already exists this week, returning existing poem");
-      return NextResponse.json(
-        { poem: existingPoem, fromCache: true },
-        { status: 200 },
-      );
-    }
+    // 🎲 GÉNÈRE UN NOMBRE ALÉATOIRE POUR FORCER UNE RÉPONSE DIFFÉRENTE
+    const randomSeed = Math.random();
 
     console.log("📡 Calling Mammouth API for poem...");
 
@@ -71,80 +37,66 @@ export async function POST(req: NextRequest) {
             },
             {
               role: "user",
-              content: `Select ONE famous masterpiece of classical Chinese poetry from ANY era in Chinese history (from ancient Zhou through Qing dynasty - include Shang, Zhou, Qin, Han, Wei-Jin, Northern-Southern dynasties, Tang, Song, Yuan, Ming, Qing, and pre-dynastic periods). Choose from the most celebrated and historically significant poems.
+              content: `Select ONE famous masterpiece of classical Chinese poetry from ANY era in Chinese history. The poem should be a true historical poem, NOT "Quiet Night Thought" by Li Bai or "The Moon Over the Spring River" by Zhang Ruoxu. Choose a DIFFERENT poem every time.
 
-Return ONLY pure, valid JSON (no markdown, no code blocks, no extra text):
+Random seed: ${randomSeed}
 
+Please respond with ONLY a valid JSON object in this exact format (no markdown, no extra text):
 {
-  "title": "English translation of the poem's title",
-  "author": "Author's full name in English",
-  "era": "Specific dynasty and approximate dates",
-  "period_characteristics": "Key poetic and cultural characteristics of this era that influenced this poem",
-  "chinese_text": "Complete original Classical Chinese text exactly as historically recorded - preserve ALL line breaks and punctuation with \\n",
-  "pinyin_text": "Full pinyin romanization with tone marks (1=high, 2=rising, 3=low, 4=falling) - preserve ALL line breaks with \\n",
-  "poem_form": "Specific poetic form (e.g., 'Regulated verse (jintishi)', 'Ci poem', 'Free verse (gushi)', 'Four-line quatrain (jueju)')",
-  "literal_translation": "Word-by-word and line-by-line literal translation showing exactly what each character/phrase means - preserve line breaks with \\n",
-  "real_meaning": "The profound philosophical, emotional, and spiritual essence of the poem (4-5 sentences). Explain what the poet truly expressed - themes of nature, mortality, separation, duty, melancholy, enlightenment, love, loss, etc. What was the poet's state of mind and message?",
-  "historical_context": "Why this poem is significant in Chinese literary history. What makes it a masterpiece? How did it influence subsequent poetry? What was happening in the poet's life or era?",
-  "thematic_analysis": "Main themes, imagery, and symbolism used throughout the poem",
-  "influence_legacy": "How this poem influenced Chinese culture, literature, and philosophy",
-  "notable_aspects": "What makes this poem particularly remarkable or unique"
-}
-
-CRITICAL REQUIREMENTS:
-- Select a REAL, FAMOUS, HISTORICALLY DOCUMENTED poem (not invented)
-- Chinese text and pinyin MUST be 100% accurate to historical records
-- Preserve exact line breaks and formatting
-- Real meaning must capture the deep emotional and philosophical core
-- Include specific dynasty information with dates
-- All translations must be scholarly and precise
-- Tone marks in pinyin are MANDATORY (ā á ǎ à for each vowel)`,
+  "title": "Poem title in English",
+  "author": "Author name",
+  "era": "Dynasty/Period name",
+  "period_characteristics": "Brief description of the historical period",
+  "chinese_text": "Full poem in traditional Chinese characters",
+  "pinyin_text": "Full poem in pinyin with tone marks",
+  "poem_form": "Type of poem (e.g., shi, ci, qu)",
+  "literal_translation": "Word-by-word literal translation to English",
+  "real_meaning": "The deeper meaning and interpretation of the poem",
+  "historical_context": "Historical background and context",
+  "thematic_analysis": "Analysis of themes and literary devices",
+  "influence_legacy": "Influence and legacy of this poem",
+  "notable_aspects": "Notable aspects that make this poem special"
+}`,
             },
           ],
-          temperature: 0.6,
+          temperature: 1.0, // 👈 AUGMENTÉ POUR PLUS DE VARIATION
           max_tokens: 1200,
         }),
       },
     );
 
     if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      console.error("❌ Mammouth error:", aiResponse.status, errorText);
+      console.error("❌ Mammouth API error:", aiResponse.statusText);
       return NextResponse.json(
-        { error: "AI API failed", status: aiResponse.status },
+        { error: "Failed to generate poem" },
         { status: 500 },
       );
     }
 
     const aiData = await aiResponse.json();
-    console.log("✅ AI Response received");
+    console.log("✅ Mammouth API response received");
 
-    if (!aiData.choices?.[0]?.message?.content) {
-      console.error("❌ No content in AI response");
-      return NextResponse.json(
-        { error: "No content from AI" },
-        { status: 500 },
-      );
-    }
-
-    const content = aiData.choices[0].message.content;
-    console.log("📝 Parsing AI response...");
-
+    // ✅ EXTRACTION ET PARSE DU JSON
     let poemData;
+    const content = aiData.choices[0].message.content;
+
+    // Essaye de parser directement
     try {
       poemData = JSON.parse(content);
-    } catch (parseError) {
-      console.error("❌ JSON parse failed:", parseError);
+    } catch {
+      // Si ça échoue, cherche le JSON dans la réponse
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
+        console.error("❌ No JSON found in response:", content);
         return NextResponse.json(
-          { error: "Invalid JSON from AI", content: content.substring(0, 100) },
+          { error: "Cannot extract JSON from response" },
           { status: 500 },
         );
       }
       try {
         poemData = JSON.parse(jsonMatch[0]);
       } catch {
+        console.error("❌ Cannot parse JSON:", jsonMatch[0]);
         return NextResponse.json(
           { error: "Cannot parse extracted JSON" },
           { status: 500 },
@@ -152,9 +104,9 @@ CRITICAL REQUIREMENTS:
       }
     }
 
-    console.log("✅ Parsed poem data");
+    console.log("✅ Parsed poem data:", poemData.title);
 
-    // ✅ VALIDATION
+    // ✅ VALIDATION DES CHAMPS OBLIGATOIRES
     if (
       !poemData.chinese_text ||
       !poemData.pinyin_text ||
@@ -164,14 +116,14 @@ CRITICAL REQUIREMENTS:
       !poemData.author ||
       !poemData.era
     ) {
-      console.error("❌ Missing required fields:", Object.keys(poemData));
+      console.error("❌ Missing required fields:", poemData);
       return NextResponse.json(
         { error: "Missing required fields in AI response" },
         { status: 500 },
       );
     }
 
-    // ✅ INSÉRER DANS LA BDD
+    // ✅ INSÉRER DANS SUPABASE
     const { data: newPoem, error: insertError } = await supabase
       .from("poems")
       .insert([
@@ -189,8 +141,6 @@ CRITICAL REQUIREMENTS:
           thematic_analysis: poemData.thematic_analysis || "",
           influence_legacy: poemData.influence_legacy || "",
           notable_aspects: poemData.notable_aspects || "",
-          week_number: currentWeek,
-          year: currentYear, // ✅ AJOUTER L'ANNÉE
           created_at: new Date().toISOString(),
         },
       ])
@@ -206,10 +156,7 @@ CRITICAL REQUIREMENTS:
     }
 
     console.log("✅ Success! Created poem:", newPoem.id);
-    return NextResponse.json(
-      { success: true, poem: newPoem, fromCache: false },
-      { status: 201 },
-    );
+    return NextResponse.json({ success: true, poem: newPoem }, { status: 201 });
   } catch (error) {
     console.error("❌ Unexpected error:", error);
     return NextResponse.json(

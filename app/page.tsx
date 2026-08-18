@@ -392,6 +392,22 @@ export default function HomePage() {
         </button>
 
         <button
+          onClick={() => router.push('/vocabulary')}
+          className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-emerald-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-emerald-500 to-teal-500 text-white"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">📚</span>
+            <div className="text-left">
+              <p className="font-bold leading-tight">My Vocabulary</p>
+              <p className="text-xs opacity-75 font-normal">
+                Add and review your custom words
+              </p>
+            </div>
+          </div>
+          <span className="text-xl opacity-75">→</span>
+        </button>
+
+        <button
           onClick={() => router.push('/lesson')}
           className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-purple-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
         >
