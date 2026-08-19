@@ -60,7 +60,6 @@ export default function DailyThemePage() {
                 setCurrentTheme(themeData);
                 loadThemeContent(themeData.id);
             } else if (themeError?.code === 'PGRST116') {
-                // Aucune thématique pour aujourd'hui, génère-en une
                 generateNewTheme();
             }
         } catch (error) {
@@ -70,7 +69,6 @@ export default function DailyThemePage() {
 
     const loadThemeContent = async (themeId: string) => {
         try {
-            // Charge le vocabulaire
             const { data: vocabData } = await supabase
                 .from('theme_vocabulary')
                 .select('*')
@@ -79,7 +77,6 @@ export default function DailyThemePage() {
 
             if (vocabData) setVocabulary(vocabData);
 
-            // Charge les phrases et dialogues
             const { data: phrasesData } = await supabase
                 .from('theme_phrases')
                 .select('*')
@@ -131,7 +128,7 @@ export default function DailyThemePage() {
             setSelectedPastTheme(themeId);
             setCurrentTheme(theme);
             loadThemeContent(themeId);
-            setSidebarOpen(false); // Ferme le sidebar sur mobile
+            setSidebarOpen(false);
         }
     };
 
@@ -169,13 +166,14 @@ export default function DailyThemePage() {
                 />
             )}
 
-            <div className="flex flex-col lg:flex-row min-h-screen">
+            {/* Grid Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-4 min-h-screen">
                 {/* Sidebar - Historique */}
                 <div
-                    className={`fixed lg:relative top-0 left-0 w-64 h-screen bg-white shadow-lg z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                    className={`fixed lg:relative top-0 left-0 w-64 lg:w-full h-screen lg:h-auto col-span-1 bg-white shadow-lg z-50 transform transition-transform duration-300 lg:translate-x-0 overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                         }`}
                 >
-                    <div className="p-6 h-full overflow-y-auto flex flex-col">
+                    <div className="p-6">
                         <h2 className="text-2xl font-bold text-indigo-900 mb-4">📚 History</h2>
                         <button
                             onClick={generateNewTheme}
@@ -185,7 +183,7 @@ export default function DailyThemePage() {
                             {loading ? 'Generating...' : '✨ Generate Today'}
                         </button>
 
-                        <div className="space-y-2 flex-1 overflow-y-auto">
+                        <div className="space-y-2">
                             {pastThemes.map((theme) => (
                                 <button
                                     key={theme.id}
@@ -213,27 +211,27 @@ export default function DailyThemePage() {
                 </div>
 
                 {/* Main Content */}
-                <div className="flex-1 w-full">
+                <div className="col-span-1 lg:col-span-3 w-full">
                     {/* Navbar */}
                     <div className="sticky top-0 bg-white shadow-md z-30">
                         <div className="flex justify-between items-center px-4 lg:px-8 py-4">
                             <div className="flex items-center gap-4">
                                 <button
                                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                                    className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                                    className="lg:hidden p-2 hover:bg-gray-100 rounded-lg text-xl"
                                 >
                                     ☰
                                 </button>
-                                <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-semibold">
+                                <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-semibold text-sm lg:text-base">
                                     ← Back
                                 </Link>
                             </div>
-                            <h1 className="text-2xl lg:text-4xl font-bold text-indigo-900">
+                            <h1 className="text-xl lg:text-3xl font-bold text-indigo-900 text-center flex-1 mx-4">
                                 Daily Themes
                             </h1>
                             <button
                                 onClick={() => setShowEnglish(!showEnglish)}
-                                className="px-3 lg:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm lg:text-base"
+                                className="px-3 lg:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-xs lg:text-sm whitespace-nowrap"
                             >
                                 {showEnglish ? '隐藏英文' : '显示英文'}
                             </button>
@@ -247,13 +245,13 @@ export default function DailyThemePage() {
                                 <>
                                     {/* Theme Header */}
                                     <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
-                                        <h1 className="text-3xl lg:text-4xl font-bold text-indigo-900 mb-2">
+                                        <h1 className="text-2xl lg:text-4xl font-bold text-indigo-900 mb-3">
                                             {currentTheme.theme_name}
                                         </h1>
-                                        <p className="text-gray-600 text-base lg:text-lg mb-4">
+                                        <p className="text-gray-600 text-sm lg:text-lg mb-4">
                                             {currentTheme.theme_description}
                                         </p>
-                                        <div className="text-sm text-gray-500">
+                                        <div className="text-xs lg:text-sm text-gray-500">
                                             📅{' '}
                                             {new Date(currentTheme.generated_date).toLocaleDateString()}
                                         </div>
@@ -262,10 +260,10 @@ export default function DailyThemePage() {
                                     {/* Vocabulary Section */}
                                     {vocabulary.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
-                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                            <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 📖 Vocabulary
                                             </h2>
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 {vocabulary.map((vocab) => (
                                                     <div
                                                         key={vocab.id}
@@ -274,11 +272,11 @@ export default function DailyThemePage() {
                                                         <div className="text-xl lg:text-2xl font-bold text-indigo-900 mb-2">
                                                             {vocab.chinese_word}
                                                         </div>
-                                                        <div className="text-indigo-700 italic mb-2 text-sm lg:text-base">
+                                                        <div className="text-indigo-700 italic mb-2 text-sm">
                                                             {vocab.pinyin}
                                                         </div>
                                                         {showEnglish && (
-                                                            <div className="text-gray-700 text-sm lg:text-base">
+                                                            <div className="text-gray-700 text-sm">
                                                                 {vocab.english_translation}
                                                             </div>
                                                         )}
@@ -294,7 +292,7 @@ export default function DailyThemePage() {
                                     {/* Dialogues Section */}
                                     {dialogues.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
-                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                            <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 💬 Dialogues
                                             </h2>
                                             <div className="space-y-6">
@@ -307,21 +305,21 @@ export default function DailyThemePage() {
                                                             <div
                                                                 key={phrase.id}
                                                                 className={`mb-4 ${phrase.speaker === 'Person A'
-                                                                        ? 'mr-0 lg:mr-8'
+                                                                        ? 'ml-0'
                                                                         : 'ml-0 lg:ml-8'
                                                                     }`}
                                                             >
-                                                                <div className="font-bold text-blue-900 mb-2 text-sm lg:text-base">
+                                                                <div className="font-bold text-blue-900 mb-1 text-sm">
                                                                     {phrase.speaker}
                                                                 </div>
-                                                                <div className="text-lg lg:text-xl font-semibold text-gray-900 mb-1">
+                                                                <div className="text-base lg:text-lg font-semibold text-gray-900 mb-1">
                                                                     {phrase.chinese_text}
                                                                 </div>
-                                                                <div className="text-blue-700 italic mb-2 text-sm lg:text-base">
+                                                                <div className="text-blue-700 italic mb-2 text-sm">
                                                                     {phrase.pinyin}
                                                                 </div>
                                                                 {showEnglish && (
-                                                                    <div className="text-gray-700 text-sm lg:text-base">
+                                                                    <div className="text-gray-700 text-sm">
                                                                         {phrase.english_translation}
                                                                     </div>
                                                                 )}
@@ -339,7 +337,7 @@ export default function DailyThemePage() {
                                     {/* Isolated Phrases Section */}
                                     {isolatedPhrases.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
-                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                            <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 ✨ Useful Phrases
                                             </h2>
                                             <div className="space-y-4">
@@ -348,14 +346,14 @@ export default function DailyThemePage() {
                                                         key={phrase.id}
                                                         className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500"
                                                     >
-                                                        <div className="text-lg lg:text-xl font-semibold text-gray-900 mb-1">
+                                                        <div className="text-base lg:text-lg font-semibold text-gray-900 mb-1">
                                                             {phrase.chinese_text}
                                                         </div>
-                                                        <div className="text-green-700 italic mb-2 text-sm lg:text-base">
+                                                        <div className="text-green-700 italic mb-2 text-sm">
                                                             {phrase.pinyin}
                                                         </div>
                                                         {showEnglish && (
-                                                            <div className="text-gray-700 text-sm lg:text-base">
+                                                            <div className="text-gray-700 text-sm">
                                                                 {phrase.english_translation}
                                                             </div>
                                                         )}
@@ -372,7 +370,7 @@ export default function DailyThemePage() {
 
                             {!currentTheme && !loading && (
                                 <div className="bg-white rounded-lg shadow-lg p-8 text-center">
-                                    <p className="text-gray-600 text-lg">No theme loaded</p>
+                                    <p className="text-gray-600">No theme loaded</p>
                                 </div>
                             )}
                         </div>
