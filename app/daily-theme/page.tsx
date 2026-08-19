@@ -38,6 +38,7 @@ export default function DailyThemePage() {
     const [loading, setLoading] = useState(false);
     const [showEnglish, setShowEnglish] = useState(false);
     const [selectedPastTheme, setSelectedPastTheme] = useState<string | null>(null);
+    const [sidebarOpen, setSidebarOpen] = useState(false);
 
     // Charge la thématique du jour
     useEffect(() => {
@@ -130,6 +131,7 @@ export default function DailyThemePage() {
             setSelectedPastTheme(themeId);
             setCurrentTheme(theme);
             loadThemeContent(themeId);
+            setSidebarOpen(false); // Ferme le sidebar sur mobile
         }
     };
 
@@ -158,168 +160,222 @@ export default function DailyThemePage() {
     const dialogues = groupDialogues();
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-8">
-            <div className="max-w-6xl mx-auto">
-                {/* Navbar */}
-                <div className="flex justify-between items-center mb-8">
-                    <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-semibold">
-                        ← Back
-                    </Link>
-                    <h1 className="text-4xl font-bold text-indigo-900">Daily Themes</h1>
-                    <button
-                        onClick={() => setShowEnglish(!showEnglish)}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-                    >
-                        {showEnglish ? '隐藏英文' : '显示英文'}
-                    </button>
-                </div>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+            {/* Mobile Sidebar Overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-                    {/* Sidebar - Historique */}
-                    <div className="lg:col-span-1">
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h2 className="text-2xl font-bold text-indigo-900 mb-4">📚 History</h2>
-                            <button
-                                onClick={generateNewTheme}
-                                disabled={loading}
-                                className="w-full mb-4 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-gray-400"
-                            >
-                                {loading ? 'Generating...' : '✨ Generate Today'}
-                            </button>
+            <div className="flex flex-col lg:flex-row min-h-screen">
+                {/* Sidebar - Historique */}
+                <div
+                    className={`fixed lg:relative top-0 left-0 w-64 h-screen bg-white shadow-lg z-50 transform transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                        }`}
+                >
+                    <div className="p-6 h-full overflow-y-auto flex flex-col">
+                        <h2 className="text-2xl font-bold text-indigo-900 mb-4">📚 History</h2>
+                        <button
+                            onClick={generateNewTheme}
+                            disabled={loading}
+                            className="w-full mb-4 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-gray-400"
+                        >
+                            {loading ? 'Generating...' : '✨ Generate Today'}
+                        </button>
 
-                            <div className="space-y-2 max-h-96 overflow-y-auto">
-                                {pastThemes.map((theme) => (
-                                    <button
-                                        key={theme.id}
-                                        onClick={() => handlePastThemeClick(theme.id)}
-                                        className={`w-full text-left p-3 rounded-lg transition ${selectedPastTheme === theme.id
-                                                ? 'bg-indigo-600 text-white'
-                                                : 'bg-gray-100 hover:bg-gray-200'
+                        <div className="space-y-2 flex-1 overflow-y-auto">
+                            {pastThemes.map((theme) => (
+                                <button
+                                    key={theme.id}
+                                    onClick={() => handlePastThemeClick(theme.id)}
+                                    className={`w-full text-left p-3 rounded-lg transition text-sm ${selectedPastTheme === theme.id
+                                            ? 'bg-indigo-600 text-white'
+                                            : 'bg-gray-100 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    <div className="font-semibold truncate">
+                                        {theme.theme_name}
+                                    </div>
+                                    <div
+                                        className={`text-xs ${selectedPastTheme === theme.id
+                                                ? 'text-indigo-100'
+                                                : 'text-gray-600'
                                             }`}
                                     >
-                                        <div className="font-semibold text-sm truncate">{theme.theme_name}</div>
-                                        <div className={`text-xs ${selectedPastTheme === theme.id ? 'text-indigo-100' : 'text-gray-600'}`}>
-                                            {new Date(theme.generated_date).toLocaleDateString()}
-                                        </div>
-                                    </button>
-                                ))}
+                                        {new Date(theme.generated_date).toLocaleDateString()}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content */}
+                <div className="flex-1 w-full">
+                    {/* Navbar */}
+                    <div className="sticky top-0 bg-white shadow-md z-30">
+                        <div className="flex justify-between items-center px-4 lg:px-8 py-4">
+                            <div className="flex items-center gap-4">
+                                <button
+                                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                                    className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+                                >
+                                    ☰
+                                </button>
+                                <Link href="/" className="text-indigo-600 hover:text-indigo-800 font-semibold">
+                                    ← Back
+                                </Link>
                             </div>
+                            <h1 className="text-2xl lg:text-4xl font-bold text-indigo-900">
+                                Daily Themes
+                            </h1>
+                            <button
+                                onClick={() => setShowEnglish(!showEnglish)}
+                                className="px-3 lg:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-sm lg:text-base"
+                            >
+                                {showEnglish ? '隐藏英文' : '显示英文'}
+                            </button>
                         </div>
                     </div>
 
-                    {/* Main Content */}
-                    <div className="lg:col-span-3 space-y-8">
-                        {currentTheme && (
-                            <>
-                                {/* Theme Header */}
-                                <div className="bg-white rounded-lg shadow-lg p-8">
-                                    <h1 className="text-4xl font-bold text-indigo-900 mb-2">
-                                        {currentTheme.theme_name}
-                                    </h1>
-                                    <p className="text-gray-600 text-lg mb-4">
-                                        {currentTheme.theme_description}
-                                    </p>
-                                    <div className="text-sm text-gray-500">
-                                        📅 {new Date(currentTheme.generated_date).toLocaleDateString()}
+                    {/* Content Area */}
+                    <div className="p-4 lg:p-8 pb-20">
+                        <div className="max-w-4xl mx-auto space-y-6 lg:space-y-8">
+                            {currentTheme && (
+                                <>
+                                    {/* Theme Header */}
+                                    <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
+                                        <h1 className="text-3xl lg:text-4xl font-bold text-indigo-900 mb-2">
+                                            {currentTheme.theme_name}
+                                        </h1>
+                                        <p className="text-gray-600 text-base lg:text-lg mb-4">
+                                            {currentTheme.theme_description}
+                                        </p>
+                                        <div className="text-sm text-gray-500">
+                                            📅{' '}
+                                            {new Date(currentTheme.generated_date).toLocaleDateString()}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Vocabulary Section */}
-                                <div className="bg-white rounded-lg shadow-lg p-8">
-                                    <h2 className="text-3xl font-bold text-indigo-900 mb-6">📖 Vocabulary</h2>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {vocabulary.map((vocab) => (
-                                            <div
-                                                key={vocab.id}
-                                                className="p-4 bg-indigo-50 rounded-lg border-l-4 border-indigo-500 hover:shadow-md transition"
-                                            >
-                                                <div className="text-2xl font-bold text-indigo-900 mb-2">
-                                                    {vocab.chinese_word}
-                                                </div>
-                                                <div className="text-indigo-700 italic mb-2">{vocab.pinyin}</div>
-                                                {showEnglish && (
-                                                    <div className="text-gray-700">{vocab.english_translation}</div>
-                                                )}
-                                                <div className="mt-2 text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded inline-block">
-                                                    HSK {vocab.hsk_level}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Dialogues Section */}
-                                {dialogues.length > 0 && (
-                                    <div className="bg-white rounded-lg shadow-lg p-8">
-                                        <h2 className="text-3xl font-bold text-indigo-900 mb-6">💬 Dialogues</h2>
-                                        <div className="space-y-6">
-                                            {dialogues.map((dialogue, dialogueIndex) => (
-                                                <div
-                                                    key={dialogueIndex}
-                                                    className="p-6 bg-blue-50 rounded-lg border-l-4 border-blue-500"
-                                                >
-                                                    {dialogue.map((phrase) => (
-                                                        <div
-                                                            key={phrase.id}
-                                                            className={`mb-4 ${phrase.speaker === 'Person A'
-                                                                    ? 'mr-8'
-                                                                    : 'ml-8'
-                                                                }`}
-                                                        >
-                                                            <div className="font-bold text-blue-900 mb-2">
-                                                                {phrase.speaker}
-                                                            </div>
-                                                            <div className="text-lg font-semibold text-gray-900 mb-1">
-                                                                {phrase.chinese_text}
-                                                            </div>
-                                                            <div className="text-blue-700 italic mb-2">
-                                                                {phrase.pinyin}
-                                                            </div>
-                                                            {showEnglish && (
-                                                                <div className="text-gray-700">{phrase.english_translation}</div>
-                                                            )}
-                                                            <div className="mt-2 text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded inline-block">
-                                                                HSK {phrase.hsk_level}
-                                                            </div>
+                                    {/* Vocabulary Section */}
+                                    {vocabulary.length > 0 && (
+                                        <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
+                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                                📖 Vocabulary
+                                            </h2>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+                                                {vocabulary.map((vocab) => (
+                                                    <div
+                                                        key={vocab.id}
+                                                        className="p-4 bg-indigo-50 rounded-lg border-l-4 border-indigo-500 hover:shadow-md transition"
+                                                    >
+                                                        <div className="text-xl lg:text-2xl font-bold text-indigo-900 mb-2">
+                                                            {vocab.chinese_word}
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            ))}
+                                                        <div className="text-indigo-700 italic mb-2 text-sm lg:text-base">
+                                                            {vocab.pinyin}
+                                                        </div>
+                                                        {showEnglish && (
+                                                            <div className="text-gray-700 text-sm lg:text-base">
+                                                                {vocab.english_translation}
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-2 text-xs bg-indigo-200 text-indigo-800 px-2 py-1 rounded inline-block">
+                                                            HSK {vocab.hsk_level}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
 
-                                {/* Isolated Phrases Section */}
-                                {isolatedPhrases.length > 0 && (
-                                    <div className="bg-white rounded-lg shadow-lg p-8">
-                                        <h2 className="text-3xl font-bold text-indigo-900 mb-6">
-                                            ✨ Useful Phrases
-                                        </h2>
-                                        <div className="space-y-4">
-                                            {isolatedPhrases.map((phrase) => (
-                                                <div
-                                                    key={phrase.id}
-                                                    className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500"
-                                                >
-                                                    <div className="text-lg font-semibold text-gray-900 mb-1">
-                                                        {phrase.chinese_text}
+                                    {/* Dialogues Section */}
+                                    {dialogues.length > 0 && (
+                                        <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
+                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                                💬 Dialogues
+                                            </h2>
+                                            <div className="space-y-6">
+                                                {dialogues.map((dialogue, dialogueIndex) => (
+                                                    <div
+                                                        key={dialogueIndex}
+                                                        className="p-6 bg-blue-50 rounded-lg border-l-4 border-blue-500"
+                                                    >
+                                                        {dialogue.map((phrase) => (
+                                                            <div
+                                                                key={phrase.id}
+                                                                className={`mb-4 ${phrase.speaker === 'Person A'
+                                                                        ? 'mr-0 lg:mr-8'
+                                                                        : 'ml-0 lg:ml-8'
+                                                                    }`}
+                                                            >
+                                                                <div className="font-bold text-blue-900 mb-2 text-sm lg:text-base">
+                                                                    {phrase.speaker}
+                                                                </div>
+                                                                <div className="text-lg lg:text-xl font-semibold text-gray-900 mb-1">
+                                                                    {phrase.chinese_text}
+                                                                </div>
+                                                                <div className="text-blue-700 italic mb-2 text-sm lg:text-base">
+                                                                    {phrase.pinyin}
+                                                                </div>
+                                                                {showEnglish && (
+                                                                    <div className="text-gray-700 text-sm lg:text-base">
+                                                                        {phrase.english_translation}
+                                                                    </div>
+                                                                )}
+                                                                <div className="mt-2 text-xs bg-blue-200 text-blue-800 px-2 py-1 rounded inline-block">
+                                                                    HSK {phrase.hsk_level}
+                                                                </div>
+                                                            </div>
+                                                        ))}
                                                     </div>
-                                                    <div className="text-green-700 italic mb-2">
-                                                        {phrase.pinyin}
-                                                    </div>
-                                                    {showEnglish && (
-                                                        <div className="text-gray-700">{phrase.english_translation}</div>
-                                                    )}
-                                                    <div className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded inline-block">
-                                                        HSK {phrase.hsk_level}
-                                                    </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                    )}
+
+                                    {/* Isolated Phrases Section */}
+                                    {isolatedPhrases.length > 0 && (
+                                        <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
+                                            <h2 className="text-2xl lg:text-3xl font-bold text-indigo-900 mb-6">
+                                                ✨ Useful Phrases
+                                            </h2>
+                                            <div className="space-y-4">
+                                                {isolatedPhrases.map((phrase) => (
+                                                    <div
+                                                        key={phrase.id}
+                                                        className="p-4 bg-green-50 rounded-lg border-l-4 border-green-500"
+                                                    >
+                                                        <div className="text-lg lg:text-xl font-semibold text-gray-900 mb-1">
+                                                            {phrase.chinese_text}
+                                                        </div>
+                                                        <div className="text-green-700 italic mb-2 text-sm lg:text-base">
+                                                            {phrase.pinyin}
+                                                        </div>
+                                                        {showEnglish && (
+                                                            <div className="text-gray-700 text-sm lg:text-base">
+                                                                {phrase.english_translation}
+                                                            </div>
+                                                        )}
+                                                        <div className="mt-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded inline-block">
+                                                            HSK {phrase.hsk_level}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {!currentTheme && !loading && (
+                                <div className="bg-white rounded-lg shadow-lg p-8 text-center">
+                                    <p className="text-gray-600 text-lg">No theme loaded</p>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
