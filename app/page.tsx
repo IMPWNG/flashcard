@@ -410,7 +410,7 @@ export default function HomePage() {
           <span className="text-xl opacity-75">→</span>
         </button>
 
-        {/* Daily Themes - Cyan/Blue */}
+        {/* Weekly Themes - Cyan/Blue */}
         <button
           onClick={() => router.push('/daily-theme')}
           className="w-full py-4 rounded-2xl font-bold text-lg shadow-lg shadow-cyan-200 active:scale-95 transition-all flex items-center justify-between px-6 bg-gradient-to-r from-cyan-500 to-blue-500 text-white"
@@ -418,9 +418,9 @@ export default function HomePage() {
           <div className="flex items-center gap-3">
             <span className="text-2xl">🌟</span>
             <div className="text-left">
-              <p className="font-bold leading-tight">Daily Themes</p>
+              <p className="font-bold leading-tight">Weekly Themes</p>
               <p className="text-xs opacity-75 font-normal">
-                Learn by topic with vocabulary & dialogues
+                One topic all week — more words every 2 days
               </p>
             </div>
           </div>

@@ -3,6 +3,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
+import {
+    countDialogueGroups,
+    formatWeekRange,
+    getContentStage,
+    getStageTargets,
+    getWeekStart,
+} from '@/lib/weeklyTheme';
 
 interface Theme {
     id: string;
@@ -40,27 +47,29 @@ export default function DailyThemePage() {
     const [selectedPastTheme, setSelectedPastTheme] = useState<string | null>(null);
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
-    // Charge la thématique du jour
+    const weekStart = getWeekStart();
+    const stage = getContentStage();
+    const targets = getStageTargets(stage);
+
     useEffect(() => {
-        loadTodayTheme();
+        loadThisWeekTheme();
         loadPastThemes();
     }, []);
 
-    const loadTodayTheme = async () => {
+    const loadThisWeekTheme = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
-
             const { data: themeData, error: themeError } = await supabase
                 .from('daily_themes')
                 .select('*')
-                .eq('generated_date', today)
-                .single();
+                .eq('generated_date', weekStart)
+                .maybeSingle();
 
             if (themeData) {
                 setCurrentTheme(themeData);
-                loadThemeContent(themeData.id);
-            } else if (themeError?.code === 'PGRST116') {
-                generateNewTheme();
+                const content = await loadThemeContent(themeData.id);
+                await expandIfNeeded(themeData.id, content.vocabCount, content.phrases);
+            } else if (!themeError || themeError.code === 'PGRST116') {
+                generateThemeContent();
             }
         } catch (error) {
             console.error('Error loading theme:', error);
@@ -75,18 +84,41 @@ export default function DailyThemePage() {
                 .eq('theme_id', themeId)
                 .order('created_at', { ascending: true });
 
-            if (vocabData) setVocabulary(vocabData);
-
             const { data: phrasesData } = await supabase
                 .from('theme_phrases')
                 .select('*')
                 .eq('theme_id', themeId)
                 .order('phrase_order', { ascending: true });
 
-            if (phrasesData) setPhrases(phrasesData);
+            const vocab = vocabData ?? [];
+            const phraseList = phrasesData ?? [];
+            setVocabulary(vocab);
+            setPhrases(phraseList);
+            return { vocabCount: vocab.length, phrases: phraseList };
         } catch (error) {
             console.error('Error loading theme content:', error);
+            return { vocabCount: 0, phrases: [] as Phrase[] };
         }
+    };
+
+    const needsMoreContent = (vocabCount: number, phraseList: Phrase[]) => {
+        const dialogues = countDialogueGroups(phraseList);
+        const isolated = phraseList.filter((p) => p.phrase_type === 'isolated_phrase').length;
+        return (
+            vocabCount < targets.vocab ||
+            dialogues < targets.dialogues ||
+            isolated < targets.phrases
+        );
+    };
+
+    const expandIfNeeded = async (
+        themeId: string,
+        vocabCount: number,
+        phraseList: Phrase[],
+    ) => {
+        if (!needsMoreContent(vocabCount, phraseList)) return;
+        await generateThemeContent();
+        await loadThemeContent(themeId);
     };
 
     const loadPastThemes = async () => {
@@ -103,22 +135,38 @@ export default function DailyThemePage() {
         }
     };
 
-    const generateNewTheme = async () => {
+    const generateThemeContent = async () => {
         setLoading(true);
         try {
             const response = await fetch('/api/generate-daily-theme', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weekStart, stage }),
             });
 
             const result = await response.json();
 
-            if (result.success) {
-                await loadTodayTheme();
+            if (result.success || result.themeId) {
+                await loadThisWeekThemeAfterGenerate();
+                await loadPastThemes();
             }
         } catch (error) {
             console.error('Error generating theme:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadThisWeekThemeAfterGenerate = async () => {
+        const { data: themeData } = await supabase
+            .from('daily_themes')
+            .select('*')
+            .eq('generated_date', weekStart)
+            .maybeSingle();
+
+        if (themeData) {
+            setCurrentTheme(themeData);
+            await loadThemeContent(themeData.id);
         }
     };
 
@@ -155,10 +203,11 @@ export default function DailyThemePage() {
 
     const isolatedPhrases = phrases.filter((p) => p.phrase_type === 'isolated_phrase');
     const dialogues = groupDialogues();
+    const isThisWeek = currentTheme?.generated_date === weekStart;
+    const nextUnlockDay = stage < 4 ? ['Wednesday', 'Friday', 'Sunday'][stage - 1] : null;
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-            {/* Mobile Sidebar Overlay */}
             {sidebarOpen && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
@@ -166,9 +215,7 @@ export default function DailyThemePage() {
                 />
             )}
 
-            {/* Grid Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-4 min-h-screen">
-                {/* Sidebar - Historique */}
                 <div
                     className={`fixed lg:relative top-0 left-0 w-64 lg:w-full h-screen lg:h-auto col-span-1 bg-white shadow-lg z-50 transform transition-transform duration-300 lg:translate-x-0 overflow-y-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
                         }`}
@@ -176,11 +223,11 @@ export default function DailyThemePage() {
                     <div className="p-6">
                         <h2 className="text-2xl font-bold text-indigo-900 mb-4">📚 History</h2>
                         <button
-                            onClick={generateNewTheme}
+                            onClick={generateThemeContent}
                             disabled={loading}
                             className="w-full mb-4 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition disabled:bg-gray-400"
                         >
-                            {loading ? 'Generating...' : '✨ Generate Today'}
+                            {loading ? 'Generating...' : '✨ Unlock this week'}
                         </button>
 
                         <div className="space-y-2">
@@ -202,7 +249,7 @@ export default function DailyThemePage() {
                                                 : 'text-gray-600'
                                             }`}
                                     >
-                                        {new Date(theme.generated_date).toLocaleDateString()}
+                                        Week of {new Date(`${theme.generated_date}T00:00:00`).toLocaleDateString()}
                                     </div>
                                 </button>
                             ))}
@@ -210,9 +257,7 @@ export default function DailyThemePage() {
                     </div>
                 </div>
 
-                {/* Main Content */}
                 <div className="col-span-1 lg:col-span-3 w-full">
-                    {/* Navbar */}
                     <div className="sticky top-0 bg-white shadow-md z-30">
                         <div className="flex justify-between items-center px-4 lg:px-8 py-4">
                             <div className="flex items-center gap-4">
@@ -227,7 +272,7 @@ export default function DailyThemePage() {
                                 </Link>
                             </div>
                             <h1 className="text-xl lg:text-3xl font-bold text-indigo-900 text-center flex-1 mx-4">
-                                Daily Themes
+                                Weekly Themes
                             </h1>
                             <button
                                 onClick={() => setShowEnglish(!showEnglish)}
@@ -238,12 +283,10 @@ export default function DailyThemePage() {
                         </div>
                     </div>
 
-                    {/* Content Area */}
                     <div className="p-4 lg:p-8 pb-20">
                         <div className="max-w-4xl mx-auto space-y-6 lg:space-y-8">
                             {currentTheme && (
                                 <>
-                                    {/* Theme Header */}
                                     <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
                                         <h1 className="text-2xl lg:text-4xl font-bold text-indigo-900 mb-3">
                                             {currentTheme.theme_name}
@@ -251,17 +294,40 @@ export default function DailyThemePage() {
                                         <p className="text-gray-600 text-sm lg:text-lg mb-4">
                                             {currentTheme.theme_description}
                                         </p>
-                                        <div className="text-xs lg:text-sm text-gray-500">
-                                            📅{' '}
-                                            {new Date(currentTheme.generated_date).toLocaleDateString()}
+                                        <div className="text-xs lg:text-sm text-gray-500 mb-4">
+                                            📅 Week of {formatWeekRange(currentTheme.generated_date)}
                                         </div>
+                                        {isThisWeek && (
+                                            <div className="rounded-xl bg-indigo-50 border border-indigo-100 p-4">
+                                                <div className="flex items-center justify-between gap-3 mb-2">
+                                                    <p className="text-sm font-semibold text-indigo-900">
+                                                        Content level {stage} of 4
+                                                    </p>
+                                                    <p className="text-xs text-indigo-600">
+                                                        Grows every 2 days
+                                                    </p>
+                                                </div>
+                                                <div className="bg-indigo-100 rounded-full h-2 mb-3">
+                                                    <div
+                                                        className="bg-indigo-600 h-2 rounded-full transition-all"
+                                                        style={{ width: `${(stage / 4) * 100}%` }}
+                                                    />
+                                                </div>
+                                                <p className="text-xs text-indigo-700">
+                                                    Target now: {targets.vocab} words · {targets.dialogues} dialogues · {targets.phrases} phrases
+                                                    {nextUnlockDay ? ` · next unlock ${nextUnlockDay}` : ' · full week unlocked'}
+                                                </p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Vocabulary Section */}
                                     {vocabulary.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
                                             <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 📖 Vocabulary
+                                                <span className="ml-2 text-base font-medium text-indigo-400">
+                                                    {vocabulary.length}
+                                                </span>
                                             </h2>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 {vocabulary.map((vocab) => (
@@ -289,11 +355,13 @@ export default function DailyThemePage() {
                                         </div>
                                     )}
 
-                                    {/* Dialogues Section */}
                                     {dialogues.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
                                             <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 💬 Dialogues
+                                                <span className="ml-2 text-base font-medium text-indigo-400">
+                                                    {dialogues.length}
+                                                </span>
                                             </h2>
                                             <div className="space-y-6">
                                                 {dialogues.map((dialogue, dialogueIndex) => (
@@ -334,11 +402,13 @@ export default function DailyThemePage() {
                                         </div>
                                     )}
 
-                                    {/* Isolated Phrases Section */}
                                     {isolatedPhrases.length > 0 && (
                                         <div className="bg-white rounded-lg shadow-lg p-6 lg:p-8">
                                             <h2 className="text-xl lg:text-3xl font-bold text-indigo-900 mb-6">
                                                 ✨ Useful Phrases
+                                                <span className="ml-2 text-base font-medium text-indigo-400">
+                                                    {isolatedPhrases.length}
+                                                </span>
                                             </h2>
                                             <div className="space-y-4">
                                                 {isolatedPhrases.map((phrase) => (

@@ -1,136 +1,170 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
+import {
+  countDialogueGroups,
+  getStageTargets,
+  type ContentStage,
+  type StageTargets,
+} from "@/lib/weeklyTheme";
 
-export async function POST(req: NextRequest) {
+const THEMES = [
+  "Introducing yourself and talking about your background",
+  "Greeting people and saying goodbye",
+  "Talking about your daily routine",
+  "Buying fruits and vegetables at the market",
+  "Ordering coffee or a drink",
+  "Going to the pharmacy",
+  "Making an appointment",
+  "At the dentist’s office",
+  "Renting an apartment",
+  "Talking to your landlord",
+  "Paying bills",
+  "Withdrawing money from an ATM",
+  "Getting your phone repaired",
+  "Buying a SIM card",
+  "Using a mobile app",
+  "Calling customer service",
+  "Sending or receiving a package",
+  "At the post office",
+  "Shopping at the market",
+  "Asking for the price and bargaining",
+  "Buying train or plane tickets",
+  "At the airport",
+  "Traveling by train",
+  "Booking a table",
+  "Inviting someone to your home",
+  "Talking about your hobbies",
+  "Making vacation plans",
+  "Expressing your likes and preferences",
+  "Talking about your health",
+  "Describing a problem or an emergency",
+  "Getting to know a colleague",
+  "Talking about your job",
+  "Taking part in a meeting",
+  "Asking for help",
+  "Apologizing and thanking someone",
+  "Expressing agreement or disagreement",
+  "Understanding numbers, dates, and times",
+  "Talking about Chinese festivals and traditions",
+  "Making purchases at a supermarket",
+  "Taking a taxi or ride-sharing",
+  "Chatting with friends",
+  "Ordering food at a restaurant",
+  "At the doctor’s office",
+  "Hotel check-in and accommodation",
+  "Shopping for clothes",
+  "Using public transportation",
+  "At the bank",
+  "Asking for directions",
+  "Small talk with neighbors",
+  "Job interview",
+  "At the gym or fitness center",
+  "Movie theater visit",
+  "Online shopping",
+  "At the hair salon",
+  "Weather conversation",
+  "Family gathering",
+  "University classroom",
+  "Weekend plans",
+];
+
+function parseStage(value: unknown): ContentStage {
+  const n = Number(value);
+  if (n === 1 || n === 2 || n === 3 || n === 4) return n;
+  return 1;
+}
+
+function parseJsonContent(content: string) {
   try {
-    console.log("🚀 Daily Theme API called");
+    return JSON.parse(content);
+  } catch {
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return null;
+    return JSON.parse(jsonMatch[0]);
+  }
+}
 
-    const MAMMOUTH_API_KEY = process.env.MAMMOUTH_API_KEY;
-    if (!MAMMOUTH_API_KEY) {
-      console.error("❌ MAMMOUTH_API_KEY is missing");
-      return NextResponse.json(
-        { error: "API Key not configured" },
-        { status: 500 },
-      );
-    }
-
-    // 1️⃣ CHECK SI UNE THÉMATIQUE EXISTE DÉJÀ AUJOURD'HUI
-    const today = new Date().toISOString().split("T")[0];
-    const { data: existingTheme } = await supabase
-      .from("daily_themes")
-      .select("id")
-      .eq("generated_date", today)
-      .single();
-
-    if (existingTheme) {
-      console.log("✅ Theme already exists for today");
-      return NextResponse.json(
+async function callMammouth(apiKey: string, userPrompt: string) {
+  const aiResponse = await fetch("https://api.mammouth.ai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "gpt-4.1-nano",
+      messages: [
         {
-          message: "Theme already generated for today",
-          themeId: existingTheme.id,
+          role: "system",
+          content:
+            "You are an expert Chinese language teacher specializing in HSK levels from level 2 to level 5. Create comprehensive, practical weekly content for language learners. Include vocabulary with proper pinyin and English translations, plus realistic dialogues and isolated phrases that learners can use in their daily life.",
         },
-        { status: 200 },
-      );
-    }
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      max_tokens: 4000,
+    }),
+  });
 
-    // 2️⃣ LISTE DES THÉMATIQUES POSSIBLES
-    const themes = [
-      "Introducing yourself and talking about your background",
-      "Greeting people and saying goodbye",
-      "Talking about your daily routine",
-      "Buying fruits and vegetables at the market",
-      "Ordering coffee or a drink",
-      "Going to the pharmacy",
-      "Making an appointment",
-      "At the dentist’s office",
-      "Renting an apartment",
-      "Talking to your landlord",
-      "Paying bills",
-      "Withdrawing money from an ATM",
-      "Getting your phone repaired",
-      "Buying a SIM card",
-      "Using a mobile app",
-      "Calling customer service",
-      "Sending or receiving a package",
-      "At the post office",
-      "Shopping at the market",
-      "Asking for the price and bargaining",
-      "Buying train or plane tickets",
-      "At the airport",
-      "Traveling by train",
-      "Booking a table",
-      "Inviting someone to your home",
-      "Talking about your hobbies",
-      "Making vacation plans",
-      "Expressing your likes and preferences",
-      "Talking about your health",
-      "Describing a problem or an emergency",
-      "Getting to know a colleague",
-      "Talking about your job",
-      "Taking part in a meeting",
-      "Asking for help",
-      "Apologizing and thanking someone",
-      "Expressing agreement or disagreement",
-      "Understanding numbers, dates, and times",
-      "Talking about Chinese festivals and traditions",
-      "Making purchases at a supermarket",
-      "Taking a taxi or ride-sharing",
-      "Chatting with friends",
-      "Ordering food at a restaurant",
-      "At the doctor’s office",
-      "Hotel check-in and accommodation",
-      "Shopping for clothes",
-      "Using public transportation",
-      "At the bank",
-      "Asking for directions",
-      "Small talk with neighbors",
-      "Job interview",
-      "At the gym or fitness center",
-      "Movie theater visit",
-      "Online shopping",
-      "At the hair salon",
-      "Weather conversation",
-      "Family gathering",
-      "University classroom",
-      "Weekend plans",
-    ];
+  if (!aiResponse.ok) {
+    throw new Error(`Mammouth API error: ${aiResponse.statusText}`);
+  }
 
-    const randomTheme = themes[Math.floor(Math.random() * themes.length)];
-    console.log(`🎯 Selected theme: ${randomTheme}`);
+  const aiData = await aiResponse.json();
+  const parsed = parseJsonContent(aiData.choices[0].message.content);
+  if (!parsed) {
+    throw new Error("Cannot extract JSON from response");
+  }
+  return parsed;
+}
 
-    // 3️⃣ APPELLE L'IA POUR GÉNÉRER LE CONTENU
-    const aiResponse = await fetch(
-      "https://api.mammouth.ai/v1/chat/completions",
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${MAMMOUTH_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4.1-nano",
-          messages: [
-            {
-              role: "system",
-              content: `You are an expert Chinese language teacher specializing in HSK levels from level 2 to level 5. Create comprehensive, practical daily content for language learners. Include vocabulary with proper pinyin and English translations, plus realistic dialogues and isolated phrases that learners can use in their daily life.`,
-            },
-            {
-              role: "user",
-              content: `Generate COMPLETE daily Chinese learning content for the theme: "${randomTheme}"
+async function saveVocabulary(themeId: string, vocabulary: any[]) {
+  if (!Array.isArray(vocabulary) || vocabulary.length === 0) return 0;
 
-Create a JSON response with:
-1. VOCABULARY SECTION: 20-30 useful words/phrases relevant to this theme (HSK levels from level 2 to level 5)
-2. PHRASES AND DIALOGUES: Mix of 2-3 realistic dialogues (back-and-forth conversations) and 10-15 isolated useful phrases
+  const vocabData = vocabulary.map((vocab: any) => ({
+    theme_id: themeId,
+    chinese_word: vocab.chinese,
+    english_translation: vocab.english,
+    pinyin: vocab.pinyin,
+    hsk_level: vocab.hsk_level,
+  }));
 
-Important:
-- All Chinese text must be in Simplified Chinese characters
-- Provide pinyin with tone marks for EVERY word and phrase
-- Provide accurate English translations
-- Dialogues should be realistic and practical
-- Include various HSK levels (2, 3, 4, 5) mixed throughout
-- Make dialogues with multiple exchanges (at least 4-5 exchanges per dialogue)
+  const { error } = await supabase.from("theme_vocabulary").insert(vocabData);
+  if (error) {
+    console.error("❌ Vocabulary insert error:", error);
+    return 0;
+  }
+  return vocabData.length;
+}
 
-Respond ONLY with this JSON format (no markdown, no extra text):
+async function savePhrases(
+  themeId: string,
+  phrases: any[],
+  startOrder: number,
+) {
+  if (!Array.isArray(phrases) || phrases.length === 0) return 0;
+
+  const phrasesData = phrases.map((phrase: any, index: number) => ({
+    theme_id: themeId,
+    phrase_type: phrase.type,
+    speaker: phrase.speaker || null,
+    chinese_text: phrase.chinese,
+    english_translation: phrase.english,
+    pinyin: phrase.pinyin,
+    hsk_level: phrase.hsk_level,
+    phrase_order: startOrder + index,
+  }));
+
+  const { error } = await supabase.from("theme_phrases").insert(phrasesData);
+  if (error) {
+    console.error("❌ Phrases insert error:", error);
+    return 0;
+  }
+  return phrasesData.length;
+}
+
+function jsonSchemaHint() {
+  return `Respond ONLY with this JSON format (no markdown, no extra text):
 {
   "theme_name": "Theme name here",
   "theme_description": "Brief description of the theme",
@@ -139,7 +173,7 @@ Respond ONLY with this JSON format (no markdown, no extra text):
       "chinese": "你好",
       "pinyin": "nǐ hǎo",
       "english": "hello",
-      "hsk_level": 1
+      "hsk_level": 2
     }
   ],
   "phrases_and_dialogues": [
@@ -168,128 +202,198 @@ Respond ONLY with this JSON format (no markdown, no extra text):
       "hsk_level": 2
     }
   ]
-}`,
-            },
-          ],
-          temperature: 0.7,
-          max_tokens: 4000,
-        }),
-      },
-    );
+}`;
+}
 
-    if (!aiResponse.ok) {
-      console.error("❌ Mammouth API error:", aiResponse.statusText);
+export async function POST(req: NextRequest) {
+  try {
+    console.log("🚀 Weekly Theme API called");
+
+    const MAMMOUTH_API_KEY = process.env.MAMMOUTH_API_KEY;
+    if (!MAMMOUTH_API_KEY) {
+      console.error("❌ MAMMOUTH_API_KEY is missing");
       return NextResponse.json(
-        { error: "Failed to generate theme content" },
+        { error: "API Key not configured" },
         { status: 500 },
       );
     }
 
-    const aiData = await aiResponse.json();
-    console.log("✅ Mammouth API response received");
+    const body = await req.json().catch(() => ({}));
+    const weekStart =
+      typeof body.weekStart === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.weekStart)
+        ? body.weekStart
+        : new Date().toISOString().split("T")[0];
+    const stage = parseStage(body.stage);
+    const targets = getStageTargets(stage);
 
-    // 4️⃣ PARSE LA RÉPONSE
-    let themeContent;
-    const content = aiData.choices[0].message.content;
+    const { data: existingTheme } = await supabase
+      .from("daily_themes")
+      .select("id, theme_name, theme_description")
+      .eq("generated_date", weekStart)
+      .maybeSingle();
 
-    try {
-      themeContent = JSON.parse(content);
-    } catch {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        console.error("❌ No JSON found in response");
+    if (!existingTheme) {
+      const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+      console.log(`🎯 New weekly theme: ${randomTheme} (stage ${stage})`);
+
+      const themeContent = await callMammouth(
+        MAMMOUTH_API_KEY,
+        `Generate COMPLETE weekly Chinese learning content for the theme: "${randomTheme}"
+
+This is the start of a 7-day theme. Content grows every 2 days, so create the stage ${stage} amount now:
+1. VOCABULARY SECTION: exactly ${targets.vocab} useful words/phrases (HSK 2 to 5)
+2. DIALOGUES: exactly ${targets.dialogues} realistic dialogues, each with at least 4-5 exchanges
+3. USEFUL PHRASES: exactly ${targets.phrases} isolated useful phrases
+
+Important:
+- All Chinese text must be in Simplified Chinese characters
+- Provide pinyin with tone marks for EVERY word and phrase
+- Provide accurate English translations
+- Dialogues should be realistic and practical
+- Include various HSK levels (2, 3, 4, 5) mixed throughout
+- Put all dialogue lines first (grouped by conversation), then isolated phrases
+
+${jsonSchemaHint()}`,
+      );
+
+      const { data: themeData, error: themeError } = await supabase
+        .from("daily_themes")
+        .insert({
+          theme_name: themeContent.theme_name,
+          theme_description: themeContent.theme_description,
+          generated_date: weekStart,
+        })
+        .select("id")
+        .single();
+
+      if (themeError || !themeData) {
+        console.error("❌ Theme creation error:", themeError);
         return NextResponse.json(
-          { error: "Cannot extract JSON from response" },
+          { error: "Failed to create theme" },
           { status: 500 },
         );
       }
-      themeContent = JSON.parse(jsonMatch[0]);
-    }
 
-    console.log("✅ Parsed theme content");
-
-    // 5️⃣ SAUVEGARDE EN BDD
-    // Crée la thématique
-    const { data: themeData, error: themeError } = await supabase
-      .from("daily_themes")
-      .insert({
-        theme_name: themeContent.theme_name,
-        theme_description: themeContent.theme_description,
-        generated_date: today,
-      })
-      .select("id")
-      .single();
-
-    if (themeError || !themeData) {
-      console.error("❌ Theme creation error:", themeError);
-      return NextResponse.json(
-        { error: "Failed to create theme" },
-        { status: 500 },
+      const vocabCount = await saveVocabulary(
+        themeData.id,
+        themeContent.vocabulary,
       );
-    }
-
-    const themeId = themeData.id;
-    console.log(`✅ Theme created with ID: ${themeId}`);
-
-    // Sauvegarde le vocabulaire
-    if (themeContent.vocabulary && Array.isArray(themeContent.vocabulary)) {
-      const vocabData = themeContent.vocabulary.map((vocab: any) => ({
-        theme_id: themeId,
-        chinese_word: vocab.chinese,
-        english_translation: vocab.english,
-        pinyin: vocab.pinyin,
-        hsk_level: vocab.hsk_level,
-      }));
-
-      const { error: vocabError } = await supabase
-        .from("theme_vocabulary")
-        .insert(vocabData);
-
-      if (vocabError) {
-        console.error("❌ Vocabulary insert error:", vocabError);
-      } else {
-        console.log(`✅ Saved ${vocabData.length} vocabulary items`);
-      }
-    }
-
-    // Sauvegarde les phrases et dialogues
-    if (
-      themeContent.phrases_and_dialogues &&
-      Array.isArray(themeContent.phrases_and_dialogues)
-    ) {
-      const phrasesData = themeContent.phrases_and_dialogues.map(
-        (phrase: any, index: number) => ({
-          theme_id: themeId,
-          phrase_type: phrase.type,
-          speaker: phrase.speaker || null,
-          chinese_text: phrase.chinese,
-          english_translation: phrase.english,
-          pinyin: phrase.pinyin,
-          hsk_level: phrase.hsk_level,
-          phrase_order: index,
-        }),
+      const phraseCount = await savePhrases(
+        themeData.id,
+        themeContent.phrases_and_dialogues,
+        0,
       );
 
-      const { error: phrasesError } = await supabase
-        .from("theme_phrases")
-        .insert(phrasesData);
-
-      if (phrasesError) {
-        console.error("❌ Phrases insert error:", phrasesError);
-      } else {
-        console.log(`✅ Saved ${phrasesData.length} phrases and dialogues`);
-      }
-    }
-
-    return NextResponse.json(
-      {
+      return NextResponse.json({
         success: true,
-        message: `Theme generated successfully for ${today}`,
-        themeId: themeId,
+        message: `Weekly theme created for week of ${weekStart}`,
+        themeId: themeData.id,
         themeName: themeContent.theme_name,
-      },
-      { status: 200 },
+        stage,
+        added: { vocabulary: vocabCount, phrases: phraseCount },
+      });
+    }
+
+    const [{ data: vocabRows }, { data: phraseRows }] = await Promise.all([
+      supabase
+        .from("theme_vocabulary")
+        .select("chinese_word")
+        .eq("theme_id", existingTheme.id),
+      supabase
+        .from("theme_phrases")
+        .select("phrase_type, chinese_text, phrase_order")
+        .eq("theme_id", existingTheme.id)
+        .order("phrase_order", { ascending: true }),
+    ]);
+
+    const currentVocab = vocabRows?.length ?? 0;
+    const currentPhrases = phraseRows ?? [];
+    const currentDialogues = countDialogueGroups(currentPhrases);
+    const currentIsolated = currentPhrases.filter(
+      (p) => p.phrase_type === "isolated_phrase",
+    ).length;
+
+    const delta: StageTargets = {
+      vocab: Math.max(0, targets.vocab - currentVocab),
+      dialogues: Math.max(0, targets.dialogues - currentDialogues),
+      phrases: Math.max(0, targets.phrases - currentIsolated),
+    };
+
+    if (delta.vocab === 0 && delta.dialogues === 0 && delta.phrases === 0) {
+      return NextResponse.json({
+        message: "Weekly theme already has enough content for this stage",
+        themeId: existingTheme.id,
+        stage,
+        alreadyComplete: true,
+      });
+    }
+
+    const existingWords = (vocabRows ?? [])
+      .map((v) => v.chinese_word)
+      .filter(Boolean)
+      .slice(0, 80)
+      .join("、");
+    const existingPhrases = currentPhrases
+      .map((p) => p.chinese_text)
+      .filter(Boolean)
+      .slice(0, 40)
+      .join(" / ");
+
+    console.log(
+      `📈 Expanding "${existingTheme.theme_name}" to stage ${stage}: +${delta.vocab} vocab, +${delta.dialogues} dialogues, +${delta.phrases} phrases`,
     );
+
+    const expansion = await callMammouth(
+      MAMMOUTH_API_KEY,
+      `Expand this existing weekly Chinese theme with NEW content only.
+
+Theme: "${existingTheme.theme_name}"
+Description: "${existingTheme.theme_description}"
+
+Already taught (do NOT repeat these):
+Vocabulary: ${existingWords || "(none)"}
+Phrases/dialogues: ${existingPhrases || "(none)"}
+
+Add exactly:
+1. ${delta.vocab} NEW vocabulary words/phrases (HSK 2 to 5)
+2. ${delta.dialogues} NEW complete dialogues (each with at least 4-5 exchanges)
+3. ${delta.phrases} NEW isolated useful phrases
+
+Important:
+- All Chinese must be Simplified characters
+- Pinyin with tone marks for every item
+- Accurate English translations
+- Mix HSK 2–5
+- Put all new dialogue lines first (grouped by conversation), then isolated phrases
+- theme_name and theme_description should match the existing theme
+
+${jsonSchemaHint()}`,
+    );
+
+    const nextOrder =
+      currentPhrases.reduce(
+        (max, p) => Math.max(max, p.phrase_order ?? 0),
+        -1,
+      ) + 1;
+
+    const vocabCount = await saveVocabulary(
+      existingTheme.id,
+      expansion.vocabulary,
+    );
+    const phraseCount = await savePhrases(
+      existingTheme.id,
+      expansion.phrases_and_dialogues,
+      nextOrder,
+    );
+
+    return NextResponse.json({
+      success: true,
+      message: `Theme expanded to stage ${stage}`,
+      themeId: existingTheme.id,
+      themeName: existingTheme.theme_name,
+      stage,
+      added: { vocabulary: vocabCount, phrases: phraseCount },
+    });
   } catch (error) {
     console.error("❌ Unexpected error:", error);
     return NextResponse.json(
