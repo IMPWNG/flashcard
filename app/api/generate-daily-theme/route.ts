@@ -233,7 +233,21 @@ export async function POST(req: NextRequest) {
       .maybeSingle();
 
     if (!existingTheme) {
-      const randomTheme = THEMES[Math.floor(Math.random() * THEMES.length)];
+      const { data: usedThemes } = await supabase
+        .from("daily_themes")
+        .select("theme_name");
+
+      const usedNames = new Set(
+        (usedThemes ?? []).map((t) => t.theme_name.toLowerCase()),
+      );
+      const unusedThemes = THEMES.filter(
+        (name) => !usedNames.has(name.toLowerCase()),
+      );
+      const firstTheme = "Asking for directions";
+      const pool = unusedThemes.length > 0 ? unusedThemes : THEMES;
+      const randomTheme = usedNames.size === 0
+        ? firstTheme
+        : pool[Math.floor(Math.random() * pool.length)];
       console.log(`🎯 New weekly theme: ${randomTheme} (stage ${stage})`);
 
       const themeContent = await callMammouth(
